@@ -1,0 +1,440 @@
+
+	.section ".text"
+
+// IRQ handler.
+	.db isr_irq
+// NMI handler
+	.db isr_nmi
+// Entrypoint
+	.db entry
+
+
+
+	// Timer interrupt handler.
+isr_irq:
+isr_nmi:
+	// Update timer limit.
+	ADD  [limit0], 33333
+	INCC [limit0+1]
+	
+	// Set timer helper.
+	MOV [timer_helper], 1
+	
+	// Acknowledge interrupts and return.
+	OR  [tctl], 0x0c00
+	MOV PF, [ST]
+	MOV PC, [ST]
+
+
+
+	// The entrypoint of the program.
+entry:
+	// region
+	// Initialise stack.
+	MOV ST, 0xffff
+	SUB ST, [0xffff]
+	
+	// Initialise bitstream reader.
+	MOV.JSR PC, read_init
+	
+	// Initialise variables.
+	MOV [frame_count], 0
+	MOV [timer_helper], 1
+	
+	// Set timer limit.
+	MOV [limit0],   33333
+	MOV [limit0+1], 0
+	
+	// Set timer value.
+	MOV [timer0],   0
+	MOV [timer0+1], 0
+	
+	// Start timer.
+	MOV [tctl], 0x0505
+	
+	// Enable ISRs.
+	OR PF, 0x0002
+	
+	// Timer awaiting device.
+.loop:
+	CMP1 [timer_helper]
+	MOV.ULT PC, .loop
+	
+	MOV [timer_helper], 0
+	
+	// Show a frame.
+	MOV.JSR PC, showframe
+	
+	MOV R0, [word_index]
+	MOV R1, [bit_index]
+	
+	// FRAME COUNTER.
+	INC [frame_count]
+	CMP [frame_count], num_frames
+	MOV.ULT PC, .loop
+	
+	// Disable timer.
+	MOV [tctl], 0x0000
+	
+	// Halt.
+.halt:
+	MOV PC, .halt
+	// endregion
+
+
+
+	// Show one frame.
+showframe:
+	// region
+	MOV [ST], R0
+	MOV.JSR PC, read1
+	
+	// Check for frame needs doing.
+	CMP1 R0
+	MOV.ULT PC, .skip
+	
+	// Load frame to TMP BUF.
+	MOV.JSR PC, loadframe
+	// INCORPORATE said frame.
+	MOV.JSR PC, xorframe
+	
+	// Return.
+.skip:
+	MOV R0, [ST]
+	MOV PC, [ST]
+	// endregion
+
+
+
+	// XOR frame data against current.
+xorframe:
+	// region
+	MOV [ST], R0
+	MOV [ST], R1
+	
+	MOV R1, 0
+	
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	INC R1
+	MOV R0, [screen_tmp+R1]
+	XOR [screen+R1], R0
+	
+	// Return.
+	MOV R1, [ST]
+	MOV R0, [ST]
+	MOV PC, [ST]
+	// endregion
+
+
+
+	// Load frame data from bitstream.
+loadframe:
+	// region
+	MOV [ST], R0
+	MOV [ST], R1
+	MOV [ST], R2
+	
+	// Reserve stack space.
+	SUB ST, 4
+	.equ showframe.start_bri, 3
+	.equ showframe.start_x,   2
+	.equ showframe.end_bri,   1
+	.equ showframe.end_x,     0
+	
+	// Start bright.
+	MOV.JSR PC, read1
+	MOV [ST+.start_bri], R0
+	// Start X.
+	MOV.JSR PC, read5
+	MOV [ST+.start_x], R0
+	
+	// End bright.
+	MOV.JSR PC, read1
+	MOV [ST+.end_bri], R0
+	// End X.
+	MOV.JSR PC, read5
+	MOV [ST+.end_x], R0
+	
+	// Start padding.
+	XOR R0, R0
+	MOV R1, R0
+	SUB R0, [ST+.start_bri]
+	MOV R2, [ST+.start_x]
+	
+	MOV PC, .prepad_check
+.prepad:
+	MOV [screen_tmp+R1], R0
+	INC R1
+	
+.prepad_check:
+	CMP R1, R2
+	MOV.ULT PC, .prepad
+	
+	// End padding.
+	XOR R0, R0
+	MOV R1, 20
+	SUB R0, [ST+.end_bri]
+	MOV R2, [ST+.end_x]
+	
+	MOV PC, .postpad_check
+.postpad:
+	MOV [screen_tmp+R1], R0
+	DEC R1
+	
+.postpad_check:
+	CMP R1, R2
+	MOV.UGT PC, .postpad
+	
+	// Pixel data.
+	MOV R1, [ST+.start_x]
+	MOV R2, [ST+.end_x]
+	
+	MOV PC, .pixels_check
+.pixels:
+	MOV.JSR PC, read16
+	MOV [screen_tmp+R1], R0
+	INC R1
+.pixels_check:
+	CMP R1, R2
+	MOV.ULE PC, .pixels
+	
+	// Return.
+	ADD ST, 4
+	MOV R2, [ST]
+	MOV R1, [ST]
+	MOV R0, [ST]
+	MOV PC, [ST]
+	// endregion
+
+
+
+	// Initialise the bitstream reader.
+read_init:
+	// region
+	MOV [ST], R0
+	
+	// Initialise word index.
+	MOV [word_index], bitstream
+	MOV [bit_index],  0
+	
+	// Read first word from buffer.
+	MOV R0, [bitstream]
+	MOV [read_cur], R0
+	
+	// Return
+	MOV R0, [ST]
+	MOV PC, [ST]
+	// endregion
+
+	// Reads 1 bit from the bitstream.
+read1:
+	// region
+	MOV [ST], R1
+	
+	// Read one bit from the buffer.
+	MOV R0, [read_cur]
+	AND R0, 0x0001
+	SHR [read_cur]
+	
+	// Test whether we need to read the next word.
+	INC [bit_index]
+	CMP [bit_index], 16
+	MOV.ULT PC, .skip
+	
+	// Read the next word into the buffer.
+	MOV R1, [word_index]
+	INC R1
+	MOV [word_index], R1
+	MOV R1, [R1]
+	MOV [read_cur], R1
+	MOV [bit_index], 0
+	
+	// Return
+.skip:
+	MOV R1, [ST]
+	MOV PC, [ST]
+	// endregion
+
+	// Reads 5 bits from the bitstream.
+read5:
+	// region
+	MOV [ST], R1
+	MOV [ST], R2
+	
+	XOR R1, R1
+	MOV R2, 4
+	
+	// Read bits in a loop.
+.loop:
+	// Read one bit.
+	MOV.JSR PC, read1
+	// Add it to the temp thingy.
+	SHR  R0
+	SHRC R1
+	// Loop.
+	DEC R2
+	MOV.UGE PC, .loop
+	
+	// The bits are in the MSB of R1, but they should be the LSB.
+	SHL R1
+	SHLC R1
+	SHLC R1
+	SHLC R1
+	SHLC R1
+	SHLC R1
+	
+	// Return.
+	MOV R0, R1
+	MOV R2, [ST]
+	MOV R1, [ST]
+	MOV PC, [ST]
+	// endregion
+
+	// Reads 16 bits from the bitstream.
+read16:
+	// region
+	MOV [ST], R1
+	MOV [ST], R2
+	
+	XOR R1, R1
+	MOV R2, 15
+	
+	// Read bits in a loop.
+.loop:
+	// Read one bit.
+	MOV.JSR PC, read1
+	// Add it to the temp thingy.
+	SHR  R0
+	SHRC R1
+	// Loop.
+	DEC R2
+	MOV.UGE PC, .loop
+	
+	// Return.
+	MOV R0, R1
+	MOV R2, [ST]
+	MOV R1, [ST]
+	MOV PC, [ST]
+	// endregion
+
+
+
+	// Copies a region of memory to another.
+	// Does not check for overlapping memory.
+	// Parameters: dst, src, size.
+memcpy:
+	// region
+	MOV [ST], R3
+	
+	// Limit prep and check size > 0.
+	DEC R2
+	LEA.ULT PC, [PC~.exit]
+	
+	// Copying loop.
+.loop:
+	// Loads from the source.
+	MOV R3, [R1+R2]
+	// Stores to the destination.
+	MOV [R0+R2], R3
+	// Decrements the limit.
+	DEC R2
+	// Loop condition.
+	LEA.UGE PC, [PC~.loop]
+	
+	// Return.
+.exit:
+	MOV R3, [ST]
+	MOV PC, [ST]
+	// endregion
+
+
+
+	.section ".bss"
+
+	// Temporary buffer for screen device.
+screen_tmp:
+	.zero 21
+
+	// Word index in bitstream.
+word_index:
+	.zero 1
+
+	// Bit index in bitstream.
+bit_index:
+	.zero 1
+
+	// Word reading helper.
+read_cur:
+	.zero 1
+
+	// Frame counter.
+frame_count:
+	.zero 1
+
+	// Timer helper.
+timer_helper:
+	.zero 1
+
+	.equ screen, 0xffc5
+	.equ num_frames, 2000
+	.equ limit0, 0xfff8
+	.equ timer0, 0xfffa
+	.equ tctl,   0xfffe
