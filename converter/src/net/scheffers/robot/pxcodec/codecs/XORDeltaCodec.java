@@ -8,10 +8,12 @@ public class XORDeltaCodec extends Codec {
 	
 	protected Codec  underlying;
 	protected PImage previous;
+	protected PImage prevDecd;
 	
 	public XORDeltaCodec(Codec underlying) {
 		this.underlying = underlying;
 		this.previous   = null;
+		this.prevDecd   = new PImage(21, 16);
 	}
 	
 	@Override
@@ -74,6 +76,29 @@ public class XORDeltaCodec extends Codec {
 	
 	@Override
 	public PImage decode(Bitstream from) {
-		return new PImage(21, 16);
+		
+		boolean hasFrame = from.read();
+		
+		if (hasFrame) {
+			PImage xor = underlying.decode(from);
+			
+			prevDecd.loadPixels();
+			xor.loadPixels();
+			for (int y = 0; y < xor.height; y++) {
+				for (int x = 0; x < xor.width; x++) {
+					// Grab pixels to compare.
+					int prev = prevDecd.pixels[y * xor.width + x] & 0xffffff;
+					int curr = xor.pixels[y * xor.width + x] & 0xffffff;
+					// Exclusive OR used as difference.
+					xor.pixels[y * xor.width + x] = prev ^ curr;
+				}
+			}
+			xor.updatePixels();
+			
+			prevDecd = xor;
+		}
+		
+		return prevDecd;
 	}
+	
 }

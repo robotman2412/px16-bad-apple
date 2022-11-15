@@ -16,12 +16,13 @@ import java.nio.charset.StandardCharsets;
 public class Main extends PApplet {
 	
 	public int numImages = 6572;
-//	public int numImages = 2000;
+//	public int numEncode = 6572;
+	public int numEncode = 600;
 	public String input  = "greyscale/";
 	public String output = "output/";
 	
 	public boolean auto = false;
-	public int currentImage;
+	public int currentImage = 400;
 	public PImage[] inputImages;
 	public PImage[] outputImages;
 	
@@ -47,20 +48,19 @@ public class Main extends PApplet {
 		for (int i = 0; i < numImages; i++) {
 			inputImages[i] = loadImage(input + "out_" + (i+1) + ".png");
 		}
-		currentImage = 0;
 		frameRate(30);
 		
 		bitstream = new Bitstream();
-		codec = new XORDeltaCodec(new HorizontalCroppingCodec());
-//		codec = new HorizontalCroppingCodec();
+//		codec = new XORDeltaCodec(new HorizontalCroppingCodec());
+		codec = new HorizontalCroppingCodec();
 	}
 	
 	@Override
 	public void draw() {
 		background(255);
 		if (currentImage < 0) currentImage = 0;
-		else if (currentImage >= numImages) {
-			currentImage = numImages - 1;
+		else if (currentImage >= numEncode) {
+			currentImage = numEncode - 1;
 			if (!saved) {
 				saved = true;
 				try {
