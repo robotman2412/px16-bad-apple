@@ -11,7 +11,7 @@ run: build/exec
 
 build/exec: build/exec.asm
 	@mkdir -p build
-	px16-as -o $@ $<
+	px16-as --linenumbers $@.map -o $@ $<
 
 build/exec.asm: src/badapple.px16 output/bitstream.px16
 	@mkdir -p build
