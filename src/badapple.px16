@@ -414,9 +414,9 @@ memcpy:
 	.section ".bss"
 
 	// Temporary buffer for screen device.
-screen_tmp:
+// screen_tmp:
 	// .zero 21
-	.equ 0xffc5
+	.equ screen_tmp, 0xffc5
 
 	// Word index in bitstream.
 word_index:
