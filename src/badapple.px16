@@ -50,27 +50,25 @@ entry:
 	MOV [timer0+1], 0
 	
 	// Start timer.
-	// MOV [tctl], 0x0505
+	MOV [tctl], 0x0505
 	
 	// Enable ISRs.
 	OR PF, 0x0002
 	
 	// Timer awaiting device.
-// .loop:
-// 	CMP1 [timer_helper]
-// 	MOV.ULT PC, .loop
+.loop:
+	CMP1 [timer_helper]
+	MOV.ULT PC, .loop
 	
-// 	MOV [timer_helper], 0
+	MOV [timer_helper], 0
 	
 	// Show a frame.
-	// MOV.JSR PC, showframe
+	MOV.JSR PC, showframe
 	
 	// FRAME COUNTER.
-	// INC [frame_count]
-	// CMP [frame_count], num_frames
-	// MOV.ULT PC, .loop
-	
-	MOV.JSR PC, loadframe
+	INC [frame_count]
+	CMP [frame_count], num_frames
+	MOV.ULT PC, .loop
 	
 	// Disable timer.
 	MOV [tctl], 0x0000
@@ -91,14 +89,14 @@ showframe:
 	MOV [ST], R0
 	
 	// Check for frame needs doing.
-	// MOV.JSR PC, read1
-	// CMP1 R0
-	// MOV.ULT PC, .skip
+	MOV.JSR PC, read1
+	CMP1 R0
+	MOV.ULT PC, .skip
 	
 	// Load frame to TMP BUF.
 	MOV.JSR PC, loadframe
 	// INCORPORATE said frame.
-	// MOV.JSR PC, xorframe
+	MOV.JSR PC, xorframe
 	
 	// Return.
 .skip:
@@ -196,10 +194,10 @@ loadframe:
 	
 	// Reserve stack space.
 	SUB ST, 4
-	.equ showframe.start_bri, 3
-	.equ showframe.start_x,   2
-	.equ showframe.end_bri,   1
-	.equ showframe.end_x,     0
+	.equ loadframe.start_bri, 3
+	.equ loadframe.start_x,   2
+	.equ loadframe.end_bri,   1
+	.equ loadframe.end_x,     0
 	
 	// Start bright.
 	MOV.JSR PC, read1
@@ -220,8 +218,6 @@ loadframe:
 	MOV R1, R0
 	SUB R0, [ST+.start_bri]
 	MOV R2, [ST+.start_x]
-	
-	DEC PC
 	
 	MOV PC, .prepad_check
 .prepad:
@@ -414,9 +410,9 @@ memcpy:
 	.section ".bss"
 
 	// Temporary buffer for screen device.
-// screen_tmp:
-	// .zero 21
-	.equ screen_tmp, 0xffc5
+screen_tmp:
+	.zero 21
+	// .equ screen_tmp, 0xffc5
 
 	// Word index in bitstream.
 word_index:
@@ -439,7 +435,7 @@ timer_helper:
 	.zero 1
 
 	.equ screen, 0xffc5
-	.equ num_frames, 600
+	.equ num_frames, 6572
 	.equ limit0, 0xfff8
 	.equ timer0, 0xfffa
 	.equ tctl,   0xfffe
