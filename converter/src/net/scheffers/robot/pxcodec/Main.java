@@ -49,7 +49,9 @@ public class Main extends PApplet {
 		
 		bitstream = new Bitstream();
 		codec = new RLECompressor(new XORDeltaCodec(new HorizontalCroppingCodec()));
-//		codec = new RLECompressor(new RawCodec());
+//		codec = new RLECompressor(new XORDeltaCodec(new RawCodec()));
+//		codec = new RLECompressor(new DeltaTransformer(new RawCodec()));
+//		codec = new RLECompressor(new XORDeltaCodec(new RawCodec()));
 		
 		// Encode images.
 		for (int i = 0; i < numEncode; i++) {

@@ -6,6 +6,7 @@ import processing.core.PImage;
 
 public class RLECompressor extends Codec {
 	
+	public final boolean useMetaMetaLength = false;
 	public final int chunkSize = 2;
 	
 	protected RLEWriteBitstream writeBuffer;
@@ -35,14 +36,19 @@ public class RLECompressor extends Codec {
 		return underlying.decode(readBuffer);
 	}
 	
-	protected static class RLEWriteBitstream extends Bitstream {
+	protected class RLEWriteBitstream extends Bitstream {
 		
 		protected Bitstream buffer;
-		protected int zeroPairCount;
-		protected boolean trailingBit;
-		protected boolean hasTrailingBit;
+		protected int zeroGroupCount;
+//		protected boolean trailingBit;
+//		protected boolean hasTrailingBit;
+		protected boolean[] incoming;
+		protected int incomingLength;
 		
-		public RLEWriteBitstream() { buffer = new Bitstream(); }
+		public RLEWriteBitstream() {
+			buffer = new Bitstream();
+			incoming = new boolean[chunkSize];
+		}
 		
 		@Override
 		public int readAvailable() {
@@ -55,13 +61,13 @@ public class RLECompressor extends Codec {
 		}
 		
 		public void finish() {
-			if (hasTrailingBit) {
-				processPair(trailingBit, false);
-				hasTrailingBit = false;
+			if (incomingLength > 0) {
+				process();
+				incomingLength = 0;
 			}
-			if (zeroPairCount > 0) {
-				writeRLE(zeroPairCount);
-				zeroPairCount = 0;
+			if (zeroGroupCount > 0) {
+				writeRLE(zeroGroupCount);
+				zeroGroupCount = 0;
 			}
 		}
 		
@@ -78,6 +84,29 @@ public class RLECompressor extends Codec {
 		}
 		
 		protected void writeRLE(int length) {
+			if (useMetaMetaLength) {
+				writeRLEMetaMeta(length);
+			} else {
+				writeRLEMeta(length);
+			}
+		}
+		
+		protected void writeRLEMeta(int length) {
+			length --;
+			int metaLength = bitsRequired(length, true)-1;
+			
+			// Write meta-length.
+			for (int i = 0; i < metaLength; i++) {
+				buffer.write(true);
+			}
+			buffer.write(false);
+			
+			// Write length.
+			buffer.writeInt(length, metaLength+1);
+		}
+		
+		protected void writeRLEMetaMeta(int length) {
+			length --;
 			int metaLength = bitsRequired(length, true);
 			int metaMetaLength = bitsRequired(metaLength-1, false);
 			
@@ -96,41 +125,48 @@ public class RLECompressor extends Codec {
 			buffer.writeInt(length, metaLength);
 		}
 		
-		protected void processPair(boolean a, boolean b) {
-			if (!a && !b) {
-				if (zeroPairCount == 0) {
-					// Write end of data block.
-					buffer.write(false, false);
+		protected void process() {
+			boolean isZero = true;
+			for (int i = 0; i < chunkSize; i++) {
+				if (incoming[i]) {
+					isZero = false;
+					break;
 				}
-				zeroPairCount ++;
+			}
+			
+			if (isZero) {
+				if (zeroGroupCount == 0) {
+					// Write end of data block.
+					for (int i = 0; i < chunkSize; i++) buffer.write(false);
+				}
+				zeroGroupCount++;
 
 			} else {
-				if (zeroPairCount > 0) {
+				if (zeroGroupCount > 0) {
 					// Flush RLE data.
-					writeRLE(zeroPairCount);
-					zeroPairCount = 0;
+					writeRLE(zeroGroupCount);
+					zeroGroupCount = 0;
 				}
 				
 				// Write literal data.
-				buffer.write(a, b);
+				buffer.write(incoming);
 			}
 		}
 		
 		@Override
 		public void write(boolean... input) {
 			for (boolean bit: input) {
-				if (hasTrailingBit) {
-					processPair(trailingBit, bit);
-					hasTrailingBit = false;
-				} else {
-					trailingBit = bit;
-					hasTrailingBit = true;
+				if (incomingLength == chunkSize) {
+					process();
+					incomingLength = 0;
 				}
+				incoming[incomingLength] = bit;
+				incomingLength ++;
 			}
 		}
 	}
 	
-	protected static class RLEReadBitstream extends Bitstream {
+	protected class RLEReadBitstream extends Bitstream {
 		
 		protected Bitstream buffer;
 		public Bitstream currentInput;
@@ -154,19 +190,40 @@ public class RLECompressor extends Codec {
 		}
 		
 		protected void decodeBits() {
-			boolean[] seq = currentInput.read(2);
-			if (!seq[0] && !seq[1]) {
-				// Read RLE MetaMetaLength.
-				int metaMetaLength = countOnes();
-				// Read MetaLength.
-				int metaLength = currentInput.readInt(metaMetaLength)+1;
-				// Read length.
-				int length = currentInput.readInt(metaLength);
-				
-				// Generate zeroes in output.
-				while (length > 0) {
-					buffer.write(false, false);
-					length --;
+			boolean[] seq = currentInput.read(chunkSize);
+			boolean isZero = true;
+			for (int i = 0; i < chunkSize; i++) {
+				if (seq[i]) {
+					isZero = false;
+					break;
+				}
+			}
+			
+			if (isZero) {
+				if (useMetaMetaLength) {
+					// Read RLE MetaMetaLength.
+					int metaMetaLength = countOnes();
+					// Read MetaLength.
+					int metaLength = currentInput.readInt(metaMetaLength)+1;
+					// Read length.
+					int length = currentInput.readInt(metaLength);
+					
+					// Generate zeroes in output.
+					while (length >= 0) {
+						for (int i = 0; i < chunkSize; i++) buffer.write(false);
+						length --;
+					}
+				} else {
+					// Read RLE MetaMetaLength.
+					int metaLength = countOnes()+1;
+					// Read length.
+					int length = currentInput.readInt(metaLength);
+					
+					// Generate zeroes in output.
+					while (length >= 0) {
+						for (int i = 0; i < chunkSize; i++) buffer.write(false);
+						length --;
+					}
 				}
 			} else {
 				// Literally write data seq.
