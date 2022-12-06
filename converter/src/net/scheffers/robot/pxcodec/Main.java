@@ -1,9 +1,6 @@
 package net.scheffers.robot.pxcodec;
 
-import net.scheffers.robot.pxcodec.codecs.EliminationCodec;
-import net.scheffers.robot.pxcodec.codecs.HorizontalCroppingCodec;
-import net.scheffers.robot.pxcodec.codecs.RawCodec;
-import net.scheffers.robot.pxcodec.codecs.XORDeltaCodec;
+import net.scheffers.robot.pxcodec.codecs.*;
 import processing.core.PApplet;
 import processing.core.PImage;
 
@@ -17,7 +14,7 @@ public class Main extends PApplet {
 	
 	public int numImages = 6572;
 	public int numEncode = 6572;
-//	public int numEncode = 4000;
+//	public int numEncode = 450;
 	public String input  = "greyscale/";
 	public String output = "output/";
 	
@@ -51,8 +48,26 @@ public class Main extends PApplet {
 		frameRate(30);
 		
 		bitstream = new Bitstream();
-		codec = new XORDeltaCodec(new HorizontalCroppingCodec());
-//		codec = new HorizontalCroppingCodec();
+		codec = new RLECompressor(new XORDeltaCodec(new HorizontalCroppingCodec()));
+//		codec = new RLECompressor(new RawCodec());
+		
+		// Encode images.
+		for (int i = 0; i < numEncode; i++) {
+			codec.encode(bitstream, inputImages[i]);
+		}
+		codec.finishEncode(bitstream);
+		
+		// Decode images.
+		for (int i = 0; i < numEncode; i++) {
+			outputImages[i] = codec.decode(bitstream);
+		}
+		
+		// Save data.
+		try {
+			saveBitstream();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 	
 	@Override
@@ -63,25 +78,16 @@ public class Main extends PApplet {
 			currentImage = numEncode - 1;
 			if (!saved) {
 				saved = true;
-				try {
-					saveBitstream();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
 			}
 		}
 		image(inputImages[currentImage], 10, 10, 210, 160);
-		if (outputImages[currentImage] == null) {
-			codec.encode(bitstream, inputImages[currentImage]);
-			outputImages[currentImage] = codec.decode(bitstream);
-		}
 		if (outputImages[currentImage] != null) {
 			image(outputImages[currentImage], 10, 180, 210, 160);
 		}
 		
 		fill(0);
 		textSize(12);
-		int maxSize     = inputImages[0].width * inputImages[0].height * (currentImage+1);
+		int maxSize     = inputImages[0].width * inputImages[0].height * numEncode;
 		int compression = 100 - bitstream.size() * 100 / maxSize;
 		int memorySize  = bitstream.size() / 16 * 100 / 65536;
 		text(String.format(
@@ -94,7 +100,7 @@ public class Main extends PApplet {
 	}
 	
 	protected void saveBitstream() throws IOException {
-		FileOutputStream fd = new FileOutputStream(output + "bitstream.px16");
+		FileOutputStream fd = new FileOutputStream(output + "rle_bitstream.px16");
 		bitstream.seek(0);
 		
 		int counter = 0;

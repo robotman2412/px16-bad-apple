@@ -7,6 +7,9 @@ public abstract class Codec {
 	// Encode an image and return the decoded result.
 	public abstract PImage encode(Bitstream to, PImage image);
 	
+	// Finished encoding, used for codecs that need to complete before decoding.
+	public void finishEncode(Bitstream to) {}
+	
 	// Decode an image.
 	public abstract PImage decode(Bitstream from);
 	

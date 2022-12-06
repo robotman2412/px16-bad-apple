@@ -1,0 +1,34 @@
+
+RLE sequence example: 42 zeroes compressed to 10 bits (76%)
+A: 11110 B: 00101
+A: Amount of bits used for B, terminated with a zero
+B: Amount of zero pairs, minus one
+
+RLE sequence example: 2 zeroes compressed to 2 bits (0%)
+A: 0 B: 0
+A: 1 bits used for B
+B: 1 zero pair
+
+Direct sequence example: 11100110 compressed to 10 bits (-25%)
+C: 11100110 D: 00
+C: Encoded data (raw)
+D: Switch from direct to RLE with bit pair 00
+
+
+64 bits snippet from bitstream:
+0000 0300 3110 8001
+
+Rearranged to bits left-to-right:
+00000000 00000000  00000000 11000000  00001000 10001100  10000000 00000001
+
+[======= ========  =======] ^^[=====  ===]^^[] ^^[]^^[]  ^^[===== =====]^^
+ 24 bits                       10 bits      2    2   2      12 bits
+
+RLE encoding:
+1110 0101  11 00  110 001  10 00  00   10 00  00   11 00  00   10 00  110 011 01 00
+(10x 00)   (data) (4x 00)  (data) (00) (data) (00) (data) (00) (data) (6x 00) (data)
+
+Packed again: down to 50 bits (21% compressed)
+11100101 11001100  01100000 10000011  00001000 11001101  00
+
+

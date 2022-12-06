@@ -1,0 +1,46 @@
+
+RLE sequence example: 20 zeroes compressed to 9 bits (55%)
+A: 110 B: 11 C: 1001
+A: Indicates 2 bits for meta-length
+B: Indicates 3+1 bits for length
+C: Indicates 9+1 zero pairs
+
+
+RLE sequence example: 42 zeroes compressed to 12 bits (71%)
+A: 1110 B: 001 C: 00101
+A: Indicates 3 bits for meta-length
+B: Indicates 4+1 bits for length
+C: Indicates 20+1 zero pairs
+
+
+RLE sequence example: 2 zeroes compressed to 2 bits (0%)
+A: 0 C: 0
+A: Indicates 0 bits for meta length
+Absent B: Indicates 1 bit for length
+C: Indicates 0+1 zero pairs
+
+
+Direct sequence example: 11100110 compressed to 10 bits (-25%)
+C: 11100110 D: 00
+C: Encoded data (raw)
+D: Switch from direct to RLE with bit pair 00
+
+
+
+64 bits snippet from bitstream:
+0000 0300 3110 8001
+
+Rearranged to bits left-to-right:
+00000000 00000000  00000000 11000000  00001000 10001100  10000000 00000001
+
+[======= ========  =======] ^^[=====  ===]^^[] ^^[]^^[]  ^^[===== =====]^^
+ 24 bits                       10 bits      2    2   2      12 bits
+
+RLE encoding:
+110 11 1101  11 00  110 01 001  10 00  00      10 00  00      10 00  110 01 101  01 00
+(12x 00)     (data) (5x 00)     (data) (1x 00) (data) (1x 00) (data) (6x 00)     (data)
+
+Packed again: down to 49 bits (23% compressed)
+11011110 11100110  01001100 00010000  01000110 01101010  0
+
+

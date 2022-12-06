@@ -19,8 +19,8 @@ public class RawCodec extends Codec {
 		smartThreshold(out);
 		
 		// Write to bitstream.
-		for (int y = 0; y < out.height; y++) {
-			for (int x = 0; x < out.width; x++) {
+		for (int x = 0; x < out.width; x++) {
+			for (int y = 0; y < out.height; y++) {
 				to.write((out.pixels[y*out.width+x] & 255) > 127);
 			}
 		}
@@ -31,7 +31,26 @@ public class RawCodec extends Codec {
 	
 	@Override
 	public PImage decode(Bitstream from) {
-		return null;
+		PImage out = new PImage(21, 16);
+		out.loadPixels();
+		
+		// Make a column array.
+		int[] cols = new int[21];
+		
+		// Read pixel data.
+		for (int i = 0; i < 21; i++) {
+			cols[i] = from.readInt(16);
+		}
+		
+		// Convert columns to the image.
+		for (int x = 0; x < out.width; x++) {
+			for (int y = 0; y < out.height; y++) {
+				out.pixels[y*out.width+x] = ((cols[x] >> y) & 1) > 0 ? 0xffffffff : 0xff000000;
+			}
+		}
+		
+		out.updatePixels();
+		return out;
 	}
 	
 }
